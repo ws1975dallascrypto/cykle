@@ -28,9 +28,9 @@ export function generateOrderNumber(): string {
   return `CYK-${date}-${suffix}`;
 }
 
-/** Formats a monetary value for display. */
-export function formatCurrency(amount: number, currency = 'AED'): string {
-  return new Intl.NumberFormat('en-AE', { style: 'currency', currency }).format(amount);
+/** Formats a monetary value in Philippine Peso for display. */
+export function formatCurrency(amount: number, currency = 'PHP'): string {
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(amount);
 }
 
 /** Calculates the platform commission on a subtotal. */
@@ -38,12 +38,12 @@ export function calculateCommission(subtotal: number, rate: number): number {
   return Math.round(subtotal * rate * 100) / 100;
 }
 
-/** Calculates weight-based delivery fee. */
+/** Calculates weight-based delivery fee (Philippine rates in PHP). */
 export function calculateDeliveryFee(distanceKm: number, weightKg: number): number {
-  const BASE_FEE = 5;
-  const DISTANCE_RATE = 0.5; // per km
+  const BASE_FEE = 50;        // ₱50 base
+  const DISTANCE_RATE = 15;   // ₱15/km
   const WEIGHT_THRESHOLD_KG = 10;
-  const HEAVY_SURCHARGE = 5;
+  const HEAVY_SURCHARGE = 30; // ₱30 for heavy loads
 
   const distanceFee = distanceKm * DISTANCE_RATE;
   const weightSurcharge = weightKg > WEIGHT_THRESHOLD_KG ? HEAVY_SURCHARGE : 0;
