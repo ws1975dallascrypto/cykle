@@ -7,7 +7,7 @@ import { env } from '../config/env';
 import { AppError } from '../middleware/error.middleware';
 import { UserRole } from '@cykle/shared';
 
-function signAccessToken(sub: string, role: UserRole, email: string): string {
+function signAccessToken(sub: string, role: string, email: string): string {
   return jwt.sign({ sub, role, email }, env.JWT_ACCESS_SECRET, {
     expiresIn: env.JWT_ACCESS_EXPIRY,
   } as jwt.SignOptions);

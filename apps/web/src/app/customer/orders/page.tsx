@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronRight, Package, Clock } from 'lucide-react';
-import { useMyOrders } from '@/hooks/useOrders';
+import { useMyOrders, OrderDetail } from '@/hooks/useOrders';
 import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +66,7 @@ export default function OrdersPage() {
   );
 }
 
-function OrderCard({ order }: { order: ReturnType<typeof useMyOrders>['data'] extends (infer T)[] ? T : never }) {
+function OrderCard({ order }: { order: OrderDetail }) {
   return (
     <Link href={`/customer/orders/${order.id}`}>
       <Card className="hover:shadow-card-hover transition-shadow">

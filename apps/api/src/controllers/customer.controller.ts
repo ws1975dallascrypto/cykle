@@ -46,7 +46,7 @@ export async function addAddress(req: Request, res: Response, next: NextFunction
     }
 
     const address = await prisma.address.create({
-      data: { customerProfileId: profile.id, label, street, building, floor, city, state: state ?? '', country, postalCode: postalCode ?? '', latitude, longitude, isDefault: Boolean(isDefault) },
+      data: { customerProfileId: profile.id, label, street, building, floor, city, country, postalCode: postalCode ?? '', latitude, longitude, isDefault: Boolean(isDefault) },
     });
     res.status(201).json({ address });
   } catch (err) {

@@ -105,7 +105,7 @@ export default function VendorSettingsPage() {
           <h2 className="font-bold text-slate-900">Commission</h2>
           <p className="text-sm text-slate-500">
             Platform commission rate is set by Cykle admin and cannot be changed here. Current rate:{' '}
-            <strong className="text-slate-900">{((data?.vendor as any)?.commissionRate * 100 ?? 15).toFixed(0)}%</strong>
+            <strong className="text-slate-900">{(((data?.vendor as any)?.commissionRate ?? 0.15) * 100).toFixed(0)}%</strong>
           </p>
           <p className="text-xs text-slate-400">Contact support if you have questions about your commission rate.</p>
         </CardContent>
