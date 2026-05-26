@@ -80,8 +80,8 @@ function SlotPicker({
   icon,
   slot,
   onSet,
-  minDate?: Date,
-  description?: string,
+  minDate,
+  description,
 }: {
   title: string;
   icon: React.ReactNode;
