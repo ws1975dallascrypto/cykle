@@ -1,0 +1,5 @@
+export const metadata = { title: 'Customer' };
+
+export default function CustomerLayout({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-screen bg-surface-muted">{children}</div>;
+}

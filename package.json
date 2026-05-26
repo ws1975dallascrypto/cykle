@@ -1,0 +1,32 @@
+{
+  "name": "cykle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "On-demand laundry marketplace platform",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "db:migrate": "pnpm --filter @cykle/api db:migrate",
+    "db:generate": "pnpm --filter @cykle/api db:generate",
+    "db:studio": "pnpm --filter @cykle/api db:studio",
+    "db:seed": "pnpm --filter @cykle/api db:seed",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .gitignore"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "prettier": "^3.3.2",
+    "turbo": "^2.0.6",
+    "typescript": "^5.5.2"
+  }
+}

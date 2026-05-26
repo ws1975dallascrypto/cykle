@@ -1,0 +1,133 @@
+name: Deploy to Hostinger VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  # ── 1. Quality gate ─────────────────────────────────────────────────────────
+  quality:
+    name: Lint & Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check (shared)
+        run: pnpm --filter @cykle/shared type-check
+
+      - name: Type-check (api)
+        run: pnpm --filter @cykle/api type-check
+
+      - name: Type-check (web)
+        run: pnpm --filter @cykle/web type-check
+
+  # ── 2. Build ────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @cykle/api build
+
+      - name: Build Web
+        run: pnpm --filter @cykle/web build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: |
+            apps/api/dist
+            apps/web/.next
+          retention-days: 1
+
+  # ── 3. Deploy to Hostinger VPS ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.HOSTINGER_APP_PATH }}
+
+            echo "==> Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Installing dependencies..."
+            pnpm install --frozen-lockfile --prod
+
+            echo "==> Running database migrations..."
+            pnpm --filter @cykle/api db:migrate:deploy
+
+            echo "==> Restarting API service (PM2)..."
+            pm2 restart cykle-api --update-env || pm2 start apps/api/dist/index.js --name cykle-api
+
+            echo "==> Restarting Web service (PM2)..."
+            pm2 restart cykle-web --update-env || pm2 start "pnpm --filter @cykle/web start" --name cykle-web
+
+            echo "==> Saving PM2 process list..."
+            pm2 save
+
+            echo "✅  Deploy complete"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment to Hostinger failed. Check logs above."

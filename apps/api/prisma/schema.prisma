@@ -1,0 +1,594 @@
+// Cykle — Laundry Marketplace Platform
+// Prisma Schema v0.1.0
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  DRIVER
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PICKUP_ASSIGNED
+  DRIVER_EN_ROUTE_PICKUP
+  DRIVER_ARRIVED_CUSTOMER
+  COLLECTED
+  AT_LAUNDRY
+  PROCESSING
+  READY_FOR_DELIVERY
+  DELIVERY_ASSIGNED
+  DRIVER_EN_ROUTE_DELIVERY
+  DRIVER_ARRIVED_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum LegType {
+  PICKUP
+  DELIVERY
+}
+
+enum LegStatus {
+  ASSIGNED
+  ACCEPTED
+  EN_ROUTE
+  ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PricingType {
+  PER_KG
+  PER_ITEM
+  FLAT_RATE
+}
+
+enum ServiceType {
+  WASH_AND_FOLD
+  WASH_AND_IRON
+  DRY_CLEAN
+  PRESS_ONLY
+  STEAM_CLEAN
+  ALTERATIONS
+  STAIN_REMOVAL
+  DUVET_BEDDING
+  EXPRESS
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  BICYCLE
+}
+
+enum CancellationReason {
+  CUSTOMER_CANCELLED
+  VENDOR_DECLINED
+  NO_DRIVER_AVAILABLE
+  PAYMENT_FAILED
+  DUPLICATE_ORDER
+  OTHER
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  DRIVER_ASSIGNED
+  PAYMENT_CONFIRMED
+  REVIEW_REQUEST
+  PROMO
+  SYSTEM
+}
+
+// ─── Core User Models ─────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String   @unique
+  passwordHash String
+  role         UserRole
+  firstName    String
+  lastName     String
+  avatar       String?
+  isActive     Boolean  @default(true)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Role-specific profiles (1:1)
+  customerProfile CustomerProfile?
+  vendorProfile   VendorProfile?
+  driverProfile   DriverProfile?
+
+  // Activity
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  reviews       Review[]
+
+  // Admin only
+  commissionOverrides CommissionOverride[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Customer Profile ─────────────────────────────────────────────────────────
+
+model CustomerProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // Stored garment preferences (JSON — typed in application layer)
+  garmentPreferences Json @default("{}")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addresses Address[]
+  orders    Order[]
+
+  @@map("customer_profiles")
+}
+
+model Address {
+  id                String  @id @default(uuid())
+  customerProfileId String
+  label             String
+  street            String
+  building          String?
+  floor             String?
+  city              String
+  state             String
+  country           String
+  postalCode        String
+  latitude          Decimal @db.Decimal(10, 7)
+  longitude         Decimal @db.Decimal(10, 7)
+  isDefault         Boolean @default(false)
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  pickupOrders    Order[]         @relation("OrderPickupAddress")
+  deliveryOrders  Order[]         @relation("OrderDeliveryAddress")
+
+  @@index([customerProfileId])
+  @@map("addresses")
+}
+
+// ─── Vendor (Laundry Shop) Profile ────────────────────────────────────────────
+
+model VendorProfile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  shopName    String
+  description String?
+  logo        String?
+  coverImage  String?
+
+  // Location
+  street     String
+  city       String
+  state      String
+  country    String
+  postalCode String
+  latitude   Decimal @db.Decimal(10, 7)
+  longitude  Decimal @db.Decimal(10, 7)
+
+  // Operational state
+  isOpen         Boolean @default(false)
+  isVerified     Boolean @default(false)
+  operatingHours Json    @default("{}") // OperatingHours shape from shared types
+
+  // Aggregates (denormalised for fast reads, updated via trigger/service)
+  rating          Decimal @default(0) @db.Decimal(3, 2)
+  totalReviews    Int     @default(0)
+  totalOrders     Int     @default(0)
+  commissionRate  Decimal @default(0.15) @db.Decimal(5, 4) // per-vendor override
+  expressSurcharge Decimal @default(1.5) @db.Decimal(5, 2)
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services         Service[]
+  orders           Order[]
+  reviews          Review[]
+  commissionConfig CommissionOverride?
+
+  @@index([latitude, longitude])
+  @@index([isOpen, isVerified])
+  @@map("vendor_profiles")
+}
+
+// ─── Driver Profile ───────────────────────────────────────────────────────────
+
+model DriverProfile {
+  id            String      @id @default(uuid())
+  userId        String      @unique
+  vehicleType   VehicleType
+  vehiclePlate  String
+  vehicleModel  String?
+  licenseNumber String
+
+  // Live location (updated via Socket.io heartbeat)
+  isOnline    Boolean @default(false)
+  currentLat  Decimal? @db.Decimal(10, 7)
+  currentLng  Decimal? @db.Decimal(10, 7)
+  lastSeenAt  DateTime?
+
+  // Aggregates
+  rating         Decimal @default(0) @db.Decimal(3, 2)
+  totalReviews   Int     @default(0)
+  totalDeliveries Int    @default(0)
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderLegs OrderLeg[]
+  reviews   Review[]
+
+  @@index([isOnline])
+  @@index([currentLat, currentLng])
+  @@map("driver_profiles")
+}
+
+// ─── Service Catalog ──────────────────────────────────────────────────────────
+
+model Service {
+  id            String      @id @default(uuid())
+  vendorProfileId String
+  name          String
+  description   String?
+  serviceType   ServiceType
+  pricingType   PricingType
+  basePrice     Decimal     @db.Decimal(10, 2)
+  unit          String      @default("kg") // "kg", "item", "piece"
+  minQuantity   Decimal?    @db.Decimal(6, 2)
+  isActive      Boolean     @default(true)
+  isExpress     Boolean     @default(false)
+  turnaroundHours Int       @default(24)
+  displayOrder  Int         @default(0)
+  icon          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  vendorProfile VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  serviceItems  ServiceItem[]
+  orderItems    OrderItem[]
+
+  @@index([vendorProfileId, isActive])
+  @@map("services")
+}
+
+model ServiceItem {
+  id           String  @id @default(uuid())
+  serviceId    String
+  name         String  // "Shirt", "Pants", "Dress", "Suit Jacket" …
+  pricePerItem Decimal @db.Decimal(10, 2)
+  icon         String?
+  isActive     Boolean @default(true)
+  displayOrder Int     @default(0)
+
+  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([serviceId])
+  @@map("service_items")
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+
+  // Participants
+  customerProfileId String
+  vendorProfileId   String
+
+  // Addresses (snapshots stored at order time; FK for live address)
+  pickupAddressId  String
+  deliveryAddressId String
+  pickupAddressSnapshot  Json // Full address JSON at order time
+  deliveryAddressSnapshot Json
+
+  // Scheduling
+  pickupScheduledAt    DateTime
+  deliveryScheduledAt  DateTime
+  pickedUpAt           DateTime?
+  deliveredAt          DateTime?
+
+  // Weight & pricing
+  estimatedWeightKg Decimal  @db.Decimal(6, 2)
+  actualWeightKg    Decimal? @db.Decimal(6, 2) // Set by vendor on arrival
+  subtotal          Decimal  @db.Decimal(10, 2)
+  deliveryFee       Decimal  @db.Decimal(10, 2)
+  commissionAmount  Decimal  @db.Decimal(10, 2)
+  total             Decimal  @db.Decimal(10, 2)
+  currency          String   @default("AED")
+
+  // Payment
+  paymentStatus    PaymentStatus @default(PENDING)
+  paymentMethod    String?       // "card", "apple_pay", "google_pay", "cash"
+  stripePaymentIntentId String?
+  paidAt           DateTime?
+
+  // Garment preferences snapshot (from customer profile at time of order)
+  garmentPreferences  Json @default("{}")
+  specialInstructions String?
+
+  // Express flag
+  isExpress Boolean @default(false)
+
+  // Cancellation
+  cancelledAt       DateTime?
+  cancellationReason CancellationReason?
+  cancellationNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id])
+  vendorProfile     VendorProfile   @relation(fields: [vendorProfileId], references: [id])
+  pickupAddress     Address         @relation("OrderPickupAddress", fields: [pickupAddressId], references: [id])
+  deliveryAddress   Address         @relation("OrderDeliveryAddress", fields: [deliveryAddressId], references: [id])
+
+  orderItems     OrderItem[]
+  orderLegs      OrderLeg[]
+  statusHistory  OrderStatusEvent[]
+  review         Review?
+  payment        Payment?
+  weightAdjustment WeightAdjustment?
+
+  @@index([customerProfileId, status])
+  @@index([vendorProfileId, status])
+  @@index([status])
+  @@index([pickupScheduledAt])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String  @id @default(uuid())
+  orderId       String
+  serviceId     String
+  serviceItemId String?
+
+  // Snapshot of pricing at order time (catalog can change after)
+  serviceName   String
+  itemName      String?
+  quantity      Decimal @db.Decimal(6, 2)
+  unitPrice     Decimal @db.Decimal(10, 2)
+  totalPrice    Decimal @db.Decimal(10, 2)
+  pricingType   PricingType
+  notes         String?
+
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service     Service      @relation(fields: [serviceId], references: [id])
+  serviceItem ServiceItem? @relation(fields: [serviceItemId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// Two-leg logistics: one row per leg (PICKUP and DELIVERY)
+model OrderLeg {
+  id            String    @id @default(uuid())
+  orderId       String
+  legType       LegType
+  legStatus     LegStatus @default(ASSIGNED)
+  driverProfileId String?
+
+  // Routing
+  originLat       Decimal? @db.Decimal(10, 7)
+  originLng       Decimal? @db.Decimal(10, 7)
+  destinationLat  Decimal? @db.Decimal(10, 7)
+  destinationLng  Decimal? @db.Decimal(10, 7)
+
+  // Timing
+  assignedAt        DateTime  @default(now())
+  acceptedAt        DateTime?
+  estimatedArrival  DateTime?
+  arrivedAt         DateTime?
+  completedAt       DateTime?
+
+  // Proof of collection / delivery
+  proofPhotoUrl String?
+  signature     String? // base64 or storage URL
+  driverNotes   String?
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driverProfile DriverProfile? @relation(fields: [driverProfileId], references: [id])
+
+  @@unique([orderId, legType])
+  @@index([driverProfileId, legStatus])
+  @@map("order_legs")
+}
+
+// Full status audit trail
+model OrderStatusEvent {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  actorId   String?     // userId who triggered this transition
+  actorRole UserRole?
+  metadata  Json        @default("{}")
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_events")
+}
+
+// Vendor-confirmed weight adjustment (triggers price recalculation)
+model WeightAdjustment {
+  id              String   @id @default(uuid())
+  orderId         String   @unique
+  originalWeightKg Decimal @db.Decimal(6, 2)
+  actualWeightKg  Decimal  @db.Decimal(6, 2)
+  priceDelta      Decimal  @db.Decimal(10, 2)
+  confirmedAt     DateTime @default(now())
+  confirmedByVendorId String
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("weight_adjustments")
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                    String        @id @default(uuid())
+  orderId               String        @unique
+  stripePaymentIntentId String        @unique
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("AED")
+  status                PaymentStatus @default(PENDING)
+  paymentMethod         String?
+  receiptUrl            String?
+  metadata              Json          @default("{}")
+  capturedAt            DateTime?
+  refundedAt            DateTime?
+  refundAmount          Decimal?      @db.Decimal(10, 2)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+model Review {
+  id              String @id @default(uuid())
+  orderId         String @unique
+  authorId        String // Customer userId
+  vendorProfileId String?
+  driverProfileId String?
+
+  vendorRating  Int?    @db.SmallInt
+  driverRating  Int?    @db.SmallInt
+  vendorComment String?
+  driverComment String?
+  isPublic      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  order         Order          @relation(fields: [orderId], references: [id])
+  author        User           @relation(fields: [authorId], references: [id])
+  vendorProfile VendorProfile? @relation(fields: [vendorProfileId], references: [id])
+  driverProfile DriverProfile? @relation(fields: [driverProfileId], references: [id])
+
+  @@index([vendorProfileId])
+  @@index([driverProfileId])
+  @@map("reviews")
+}
+
+// ─── Platform Config & Commission ─────────────────────────────────────────────
+
+model PlatformConfig {
+  id                     String  @id @default(uuid())
+  key                    String  @unique
+  value                  String
+  description            String?
+  isPublic               Boolean @default(false)
+  updatedAt              DateTime @updatedAt
+
+  @@map("platform_config")
+}
+
+// Per-vendor commission override (set by super admin)
+model CommissionOverride {
+  id              String   @id @default(uuid())
+  vendorProfileId String   @unique
+  rate            Decimal  @db.Decimal(5, 4)
+  effectiveFrom   DateTime @default(now())
+  effectiveTo     DateTime?
+  setByUserId     String
+  note            String?
+
+  vendorProfile VendorProfile @relation(fields: [vendorProfileId], references: [id])
+  setByUser     User          @relation(fields: [setByUserId], references: [id])
+
+  @@map("commission_overrides")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json             @default("{}")
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Audit Log (Super Admin) ──────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String
+  action      String   // e.g. "COMMISSION_UPDATED", "USER_BANNED"
+  targetTable String?
+  targetId    String?
+  before      Json?
+  after       Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([targetTable, targetId])
+  @@map("audit_logs")
+}
