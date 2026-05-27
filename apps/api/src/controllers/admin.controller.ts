@@ -115,6 +115,102 @@ export async function listAllOrders(req: Request, res: Response, next: NextFunct
   }
 }
 
+export async function reactivateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: true },
+    });
+    await prisma.auditLog.create({
+      data: { actorId: req.user!.sub, action: 'USER_REACTIVATED', targetTable: 'users', targetId: user.id },
+    });
+    res.json({ message: 'User reactivated', userId: user.id });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listVendors(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = 20;
+    const [vendors, total] = await Promise.all([
+      prisma.vendorProfile.findMany({
+        include: {
+          user: { select: { id: true, email: true, firstName: true, lastName: true, isActive: true, isVerified: true } },
+          _count: { select: { orders: true } },
+        },
+        orderBy: { shopName: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.vendorProfile.count(),
+    ]);
+    res.json({ vendors, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function toggleVendorActive(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const vendor = await prisma.vendorProfile.findUniqueOrThrow({ where: { id: req.params.id } });
+    const updated = await prisma.vendorProfile.update({
+      where: { id: req.params.id },
+      data: { isOpen: !vendor.isOpen },
+    });
+    await prisma.auditLog.create({
+      data: { actorId: req.user!.sub, action: updated.isOpen ? 'VENDOR_ACTIVATED' : 'VENDOR_DEACTIVATED', targetTable: 'vendor_profiles', targetId: vendor.id },
+    });
+    res.json({ isOpen: updated.isOpen });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listDrivers(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = 20;
+    const [drivers, total] = await Promise.all([
+      prisma.driverProfile.findMany({
+        include: {
+          user: { select: { id: true, email: true, firstName: true, lastName: true, isActive: true, isVerified: true } },
+          _count: { select: { orderLegs: true } },
+        },
+        orderBy: { id: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.driverProfile.count(),
+    ]);
+    res.json({ drivers, total, page, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function toggleDriverActive(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const driver = await prisma.driverProfile.findUniqueOrThrow({
+      where: { id: req.params.id },
+      include: { user: { select: { isActive: true } } },
+    });
+    // Suspend by deactivating the user account
+    const active = driver.user.isActive;
+    const updated = await prisma.user.update({
+      where: { id: driver.userId },
+      data: { isActive: !active },
+    });
+    await prisma.auditLog.create({
+      data: { actorId: req.user!.sub, action: updated.isActive ? 'DRIVER_REACTIVATED' : 'DRIVER_SUSPENDED', targetTable: 'driver_profiles', targetId: driver.id },
+    });
+    res.json({ isActive: updated.isActive });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function setCommissionOverride(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { rate, note, effectiveTo } = req.body as { rate: number; note?: string; effectiveTo?: string };

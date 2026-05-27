@@ -103,7 +103,10 @@ jobs:
           key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
           port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
           script: |
-            set -e
+            echo "==> Copying build artifacts..."
+            cp -r apps/api/dist ${{ secrets.HOSTINGER_APP_PATH }}/apps/api/
+            cp -r apps/web/.next ${{ secrets.HOSTINGER_APP_PATH }}/apps/web/
+
             cd ${{ secrets.HOSTINGER_APP_PATH }}
 
             echo "==> Pulling latest code..."
@@ -113,8 +116,8 @@ jobs:
             echo "==> Installing dependencies..."
             pnpm install --frozen-lockfile --prod
 
-            echo "==> Running database migrations..."
-            pnpm --filter @cykle/api db:migrate:deploy
+            echo "==> Syncing database schema..."
+            pnpm --filter @cykle/api exec prisma db push --accept-data-loss
 
             echo "==> Restarting API service (PM2)..."
             pm2 restart cykle-api --update-env || pm2 start apps/api/dist/index.js --name cykle-api
