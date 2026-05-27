@@ -104,36 +104,100 @@ jobs:
           key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
           port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
           script: |
-            echo "==> Copying build artifacts..."
-            cp -r apps/api/dist ${{ secrets.HOSTINGER_APP_PATH }}/apps/api/
-            cp -r apps/web/.next ${{ secrets.HOSTINGER_APP_PATH }}/apps/web/
+            set -e
 
-            cd ${{ secrets.HOSTINGER_APP_PATH }}
+            # ── Bootstrap (idempotent — safe to run on every deploy) ──────────
+            echo "==> Checking Node.js..."
+            if ! command -v node &>/dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
+            fi
 
-            echo "==> Pulling latest code..."
-            git fetch origin main
-            git reset --hard origin/main
+            echo "==> Checking pnpm..."
+            command -v pnpm &>/dev/null || npm install -g pnpm@9.0.0
 
-            echo "==> Installing dependencies..."
+            echo "==> Checking PM2..."
+            if ! command -v pm2 &>/dev/null; then
+              npm install -g pm2
+              pm2 startup systemd -u root --hp /root | tail -1 | bash
+            fi
+
+            echo "==> Checking Nginx..."
+            if ! command -v nginx &>/dev/null; then
+              apt-get install -y nginx
+              systemctl enable nginx
+            fi
+
+            # ── Nginx config ──────────────────────────────────────────────────
+            cat > /etc/nginx/sites-available/cykle <<'NGINX'
+            server {
+                listen 80;
+                server_name orangered-peafowl-333460.hostingersite.com;
+                location / {
+                    proxy_pass http://localhost:3000;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_cache_bypass $http_upgrade;
+                }
+                location /api {
+                    proxy_pass http://localhost:4000;
+                    proxy_http_version 1.1;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                }
+            }
+            NGINX
+            ln -sf /etc/nginx/sites-available/cykle /etc/nginx/sites-enabled/cykle
+            nginx -t && systemctl reload nginx
+
+            # ── App directory ─────────────────────────────────────────────────
+            APP=${{ secrets.HOSTINGER_APP_PATH }}
+            if [ -d "$APP/.git" ]; then
+              git -C "$APP" fetch origin main
+              git -C "$APP" reset --hard origin/main
+            else
+              mkdir -p "$APP"
+              git clone https://github.com/ws1975dallascrypto/cykle "$APP"
+            fi
+            cd "$APP"
+
+            # ── .env ──────────────────────────────────────────────────────────
+            mkdir -p apps/api
+            cat > apps/api/.env <<ENV
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            PORT=4000
+            NODE_ENV=production
+            JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            JWT_ACCESS_EXPIRY=15m
+            JWT_REFRESH_EXPIRY=7d
+            TIMEZONE=Asia/Manila
+            LOCALE=en-PH
+            CURRENCY=PHP
+            CORS_ORIGIN=http://orangered-peafowl-333460.hostingersite.com
+            ENV
+
+            # ── Copy pre-built artifacts ──────────────────────────────────────
+            echo "==> Installing production dependencies..."
             pnpm install --frozen-lockfile --prod
-
-            echo "==> Writing DATABASE_URL to .env..."
-            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|" apps/api/.env || \
-              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> apps/api/.env
 
             echo "==> Syncing database schema..."
             pnpm --filter @cykle/api exec prisma db push --accept-data-loss
 
-            echo "==> Restarting API service (PM2)..."
-            pm2 restart cykle-api --update-env || pm2 start apps/api/dist/index.js --name cykle-api
+            echo "==> Seeding demo data (first run only)..."
+            pnpm --filter @cykle/api db:seed || true
 
-            echo "==> Restarting Web service (PM2)..."
-            pm2 restart cykle-web --update-env || pm2 start "pnpm --filter @cykle/web start" --name cykle-web
-
-            echo "==> Saving PM2 process list..."
+            echo "==> Starting services..."
+            pm2 restart cykle-api --update-env 2>/dev/null || \
+              pm2 start apps/api/dist/index.js --name cykle-api
+            pm2 restart cykle-web --update-env 2>/dev/null || \
+              pm2 start "pnpm --filter @cykle/web start" --name cykle-web --cwd "$APP"
             pm2 save
 
-            echo "✅  Deploy complete"
+            echo "✅  Deploy complete → http://orangered-peafowl-333460.hostingersite.com"
 
       - name: Notify on failure
         if: failure()
