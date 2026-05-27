@@ -117,6 +117,10 @@ jobs:
             echo "==> Installing dependencies..."
             pnpm install --frozen-lockfile --prod
 
+            echo "==> Writing DATABASE_URL to .env..."
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${{ secrets.DATABASE_URL }}|" apps/api/.env || \
+              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> apps/api/.env
+
             echo "==> Syncing database schema..."
             pnpm --filter @cykle/api exec prisma db push --accept-data-loss
 
