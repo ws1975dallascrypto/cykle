@@ -1,0 +1,71 @@
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cykle
+      POSTGRES_USER: cykle
+      POSTGRES_PASSWORD: cykle_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cykle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── API (Express + Prisma) ────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://cykle:cykle_local@postgres:5432/cykle
+      PORT: "4000"
+      NODE_ENV: development
+
+      # JWT — change these in production!
+      JWT_ACCESS_SECRET: local-dev-access-secret-cykle-2024
+      JWT_REFRESH_SECRET: local-dev-refresh-secret-cykle-2024
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+
+      # Philippine locale
+      TIMEZONE: Asia/Manila
+      LOCALE: en-PH
+      CURRENCY: PHP
+
+      # CORS — allow the web container
+      CORS_ORIGIN: http://localhost:3000
+
+      # Optional — leave blank, features degrade gracefully
+      PAYMONGO_SECRET_KEY: ""
+      TWILIO_ACCOUNT_SID: ""
+      CLOUDINARY_CLOUD_NAME: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Web (Next.js) ─────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Browser reaches the API through the host, not the Docker network
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
