@@ -96,26 +96,13 @@ jobs:
         with:
           name: build-${{ github.sha }}
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
-
-      - name: Test SSH connection
-        run: |
-          sshpass -p '${{ secrets.HOSTINGER_SSH_PASSWORD }}' \
-            ssh -v -o StrictHostKeyChecking=no \
-            -p 65002 \
-            ${{ secrets.HOSTINGER_SSH_USER }}@${{ secrets.HOSTINGER_SSH_HOST }} \
-            'echo "✅ SSH OK — user=$(whoami) host=$(hostname)"'
-        continue-on-error: true
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
           username: ${{ secrets.HOSTINGER_SSH_USER }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          key: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
           port: 65002
-          debug: true
           script: |
             set -e
             SUDO=""
