@@ -71,7 +71,7 @@ if [ ! -f "${APP_DIR}/apps/api/.env" ]; then
 
   cat > "${APP_DIR}/apps/api/.env" <<ENV
 # ── Database (Hostinger managed MySQL) ───────────────────────────────────────
-DATABASE_URL="mysql://u307564296_cyklegit2026:Cykle2026git%40%40%40@srv1514.hstgr.io:3306/u307564296_cyklegit2026"
+DATABASE_URL="mysql://u307564296_cyklegit2026:Cykle2026git.@srv1514.hstgr.io:3306/u307564296_cyklegit2026"
 
 # ── Server ────────────────────────────────────────────────────────────────────
 PORT=4000
