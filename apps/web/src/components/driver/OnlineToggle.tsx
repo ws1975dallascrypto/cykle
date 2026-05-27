@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Power, Loader2 } from 'lucide-react';
 import { useToggleOnline } from '@/hooks/useDriverDashboard';
 import { cn } from '@/lib/utils';

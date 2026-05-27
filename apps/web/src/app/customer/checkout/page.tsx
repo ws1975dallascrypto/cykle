@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, CreditCard, Smartphone, Banknote, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { SchedulingEngine } from '@/components/customer/SchedulingEngine';
 import { Button } from '@/components/ui/button';

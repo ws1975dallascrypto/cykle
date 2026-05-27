@@ -1,21 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUpdateOrderStatus } from '@/hooks/useVendorOrders';
 import { OrderStatus } from '@cykle/shared';
-import { cn } from '@/lib/utils';
 
-// Vendor-actionable transitions only
-const VENDOR_TRANSITIONS: Partial<Record<OrderStatus, { next: OrderStatus; label: string; note: string; color: string }>> = {
-  [OrderStatus.READY_FOR_DELIVERY]: {
-    next: OrderStatus.READY_FOR_DELIVERY,
-    label: 'Mark Ready for Delivery',
-    note: 'Laundry is cleaned and packed for pickup.',
-    color: 'success',
-  },
-};
 
 // The weight confirm panel handles AT_LAUNDRY → PROCESSING transition,
 // so we surface only the remaining vendor step here.

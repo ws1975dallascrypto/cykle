@@ -10,10 +10,9 @@ interface LegActionButtonsProps {
   legId: string;
   legStatus: string;
   legType: 'PICKUP' | 'DELIVERY';
-  orderId: string;
 }
 
-export function LegActionButtons({ legId, legStatus, legType, orderId }: LegActionButtonsProps) {
+export function LegActionButtons({ legId, legStatus, legType }: LegActionButtonsProps) {
   const { mutate: updateStatus, isPending } = useUpdateLegStatus();
   const [showProof, setShowProof] = useState(false);
 

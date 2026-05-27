@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCartStore } from '@/store/cart.store';
 import { PricingType } from '@cykle/shared';
 import type { VendorDetail } from '@/hooks/useVendors';
-import { cn } from '@/lib/utils';
+
 
 interface ServiceCatalogProps {
   vendor: VendorDetail;

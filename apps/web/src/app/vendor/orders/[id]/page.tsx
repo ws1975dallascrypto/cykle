@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Phone, Scale, User, MessageSquare, Clock } from 'lucide-react';
+import { ArrowLeft, Phone, Scale, MessageSquare, Clock } from 'lucide-react';
 import { useVendorOrder } from '@/hooks/useVendorOrders';
 import { WeightConfirmSheet } from '@/components/vendor/WeightConfirmSheet';
 import { StatusUpdatePanel } from '@/components/vendor/StatusUpdatePanel';
@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatPHP, formatWeight } from '@/lib/utils';
-import { ORDER_STATUS_LABELS, OrderStatus } from '@cykle/shared';
+import { OrderStatus } from '@cykle/shared';
 
 const PREF_LABELS: Record<string, Record<string, string>> = {
   detergentType:      { STANDARD: 'Standard', SENSITIVE: 'Sensitive', FRAGRANCE_FREE: 'Fragrance-Free' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, Circle, Clock, Truck, WashingMachine, Package, MapPin } from 'lucide-react';
+
 import { ORDER_STATUS_LABELS } from '@cykle/shared';
 import type { OrderDetail } from '@/hooks/useOrders';
 import { cn } from '@/lib/utils';

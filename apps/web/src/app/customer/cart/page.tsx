@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Scale, Settings, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { WeightEstimator } from '@/components/customer/WeightEstimator';
 import { GarmentPreferences } from '@/components/customer/GarmentPreferences';
@@ -15,7 +15,7 @@ type Tab = 'items' | 'weight' | 'prefs';
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, subtotal, vendorName, estimatedWeightKg, updateQuantity, removeItem, clearCart } = useCartStore();
+  const { items, subtotal, vendorName, estimatedWeightKg, updateQuantity, clearCart } = useCartStore();
   const [activeTab, setActiveTab] = useState<Tab>('items');
 
   const total = subtotal();

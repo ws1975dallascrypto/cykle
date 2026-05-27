@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Truck, Package } from 'lucide-react';
+import { Clock, Truck, Package } from 'lucide-react';
 import { useCartStore, ScheduleSlot } from '@/store/cart.store';
 import { getAvailableDates, getTimeSlots, formatShortDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -80,7 +80,6 @@ function SlotPicker({
   icon,
   slot,
   onSet,
-  minDate,
   description,
 }: {
   title: string;

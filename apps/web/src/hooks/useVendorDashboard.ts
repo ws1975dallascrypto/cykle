@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
-import { OrderStatus } from '@cykle/shared';
+import type { OperatingHours } from '@cykle/shared';
 
 export interface VendorStats {
   pending: number;
@@ -16,11 +16,13 @@ export interface VendorDashboardData {
   vendor: {
     id: string;
     shopName: string;
+    description?: string;
     logo?: string;
     isOpen: boolean;
     rating: number;
     totalReviews: number;
     commissionRate: number;
+    operatingHours?: Partial<OperatingHours>;
   };
   stats: VendorStats;
 }

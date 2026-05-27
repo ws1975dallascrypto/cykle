@@ -2,18 +2,13 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, Star, Clock, Phone, Zap } from 'lucide-react';
+import { ArrowLeft, MapPin, Star, Clock, Zap } from 'lucide-react';
 import { useVendorDetail } from '@/hooks/useVendors';
 import { ServiceCatalog } from '@/components/customer/ServiceCatalog';
 import { CartBar } from '@/components/customer/CartBar';
 import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { formatDistance, formatRating } from '@/lib/utils';
-
-const DAY_LABELS: Record<string, string> = {
-  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
-  thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
-};
+import { formatRating } from '@/lib/utils';
 
 export default function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

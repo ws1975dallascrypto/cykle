@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Power, RefreshCw, TrendingUp, Bell } from 'lucide-react';
+import { Power, RefreshCw } from 'lucide-react';
 import { useVendorDashboard, useToggleOpen } from '@/hooks/useVendorDashboard';
 import { useVendorOrders } from '@/hooks/useVendorOrders';
 import { StatsCard } from '@/components/vendor/StatsCard';

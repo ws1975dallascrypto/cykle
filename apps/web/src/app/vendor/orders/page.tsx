@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useVendorOrders } from '@/hooks/useVendorOrders';
 import { VendorOrderCard } from '@/components/vendor/VendorOrderCard';

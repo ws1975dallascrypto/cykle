@@ -156,7 +156,6 @@ export default function LegDetailPage() {
           legId={leg.id}
           legStatus={leg.legStatus}
           legType={leg.legType as 'PICKUP' | 'DELIVERY'}
-          orderId={leg.order.id}
         />
       </div>
     </div>

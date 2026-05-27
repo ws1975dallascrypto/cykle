@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, MapPin, Settings, ChevronRight, Phone, Mail } from 'lucide-react';
+import { LogOut, MapPin, Settings, ChevronRight, Mail } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';

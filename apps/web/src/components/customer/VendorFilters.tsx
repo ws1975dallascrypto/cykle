@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { SlidersHorizontal, Zap, Star, MapPin } from 'lucide-react';
+import { Zap, Star, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type SortKey = 'distance' | 'rating' | 'express';
