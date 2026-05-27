@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useVendorOrders } from '@/hooks/useVendorOrders';
 import { VendorOrderCard } from '@/components/vendor/VendorOrderCard';
@@ -39,6 +39,14 @@ const TABS: { id: Tab; label: string; icon: string; statuses?: OrderStatus[] }[]
 ];
 
 export default function VendorOrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><Spinner /></div>}>
+      <VendorOrdersContent />
+    </Suspense>
+  );
+}
+
+function VendorOrdersContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) ?? 'all');
 

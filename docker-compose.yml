@@ -1,19 +1,20 @@
 services:
 
-  # ── PostgreSQL ────────────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
+  # ── MySQL 8 ───────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
     restart: unless-stopped
     environment:
-      POSTGRES_DB: cykle
-      POSTGRES_USER: cykle
-      POSTGRES_PASSWORD: cykle_local
+      MYSQL_DATABASE: cykle
+      MYSQL_USER: cykle
+      MYSQL_PASSWORD: cykle_local
+      MYSQL_ROOT_PASSWORD: cykle_root_local
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cykle"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "cykle", "-pcykle_local"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,7 +28,7 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: postgresql://cykle:cykle_local@postgres:5432/cykle
+      DATABASE_URL: mysql://cykle:cykle_local@mysql:3306/cykle
       PORT: "4000"
       NODE_ENV: development
 
@@ -50,7 +51,7 @@ services:
       TWILIO_ACCOUNT_SID: ""
       CLOUDINARY_CLOUD_NAME: ""
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
 
   # ── Web (Next.js) ─────────────────────────────────────────────────────────────
@@ -68,4 +69,4 @@ services:
       - api
 
 volumes:
-  postgres_data:
+  mysql_data:
