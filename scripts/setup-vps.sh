@@ -164,7 +164,7 @@ pnpm --filter @cykle/api build
 
 echo ""
 echo "==> Building Web (with domain URL)..."
-NEXT_PUBLIC_API_URL="http://${DOMAIN}/api" pnpm --filter @cykle/web build
+NEXT_PUBLIC_API_URL="http://${DOMAIN}" pnpm --filter @cykle/web build
 
 echo ""
 echo "==> Seeding demo data..."
@@ -199,6 +199,6 @@ echo "║  HOSTINGER_SSH_HOST        = 194.164.74.70                  ║"
 echo "║  HOSTINGER_SSH_USER        = root                           ║"
 echo "║  HOSTINGER_SSH_PRIVATE_KEY = <your private key>             ║"
 echo "║  HOSTINGER_APP_PATH        = ${APP_DIR}                     ║"
-echo "║  NEXT_PUBLIC_API_URL       = http://${DOMAIN}/api           ║"
+echo "║  NEXT_PUBLIC_API_URL       = http://${DOMAIN}               ║"
 echo "║  DATABASE_URL              = (see apps/api/.env)            ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
