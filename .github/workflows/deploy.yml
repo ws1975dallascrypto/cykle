@@ -90,37 +90,35 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-            SUDO=""
-            [ "$(id -u)" != "0" ] && SUDO="sudo"
 
-            # ── Bootstrap (idempotent) ────────────────────────────────────────
+            # ── Bootstrap: runs as root, no sudo needed ──────────────────────
             echo "==> Checking Node.js..."
             if ! command -v node &>/dev/null; then
-              curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO bash -
-              $SUDO apt-get install -y nodejs
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
             fi
             echo "    Node: $(node -v)"
 
             echo "==> Checking pnpm..."
             if ! command -v pnpm &>/dev/null; then
-              $SUDO npm install -g pnpm@9.0.0
+              npm install -g pnpm@9.0.0
             fi
             echo "    pnpm: $(pnpm -v)"
 
             echo "==> Checking PM2..."
             if ! command -v pm2 &>/dev/null; then
-              $SUDO npm install -g pm2
-              pm2 startup systemd -u $(whoami) --hp $HOME | tail -1 | $SUDO bash || true
+              npm install -g pm2
+              pm2 startup systemd -u root --hp /root | tail -1 | bash
             fi
 
             echo "==> Checking Nginx..."
             if ! command -v nginx &>/dev/null; then
-              $SUDO apt-get install -y nginx
-              $SUDO systemctl enable nginx
+              apt-get install -y nginx
+              systemctl enable nginx
             fi
 
             # ── Nginx config ──────────────────────────────────────────────────
-            $SUDO tee /etc/nginx/sites-available/cykle > /dev/null <<'NGINX'
+            cat > /etc/nginx/sites-available/cykle <<'NGINX'
             server {
                 listen 80;
                 server_name orangered-peafowl-333460.hostingersite.com;
@@ -145,14 +143,13 @@ jobs:
                 }
             }
             NGINX
-            $SUDO ln -sf /etc/nginx/sites-available/cykle /etc/nginx/sites-enabled/cykle
-            $SUDO rm -f /etc/nginx/sites-enabled/default
-            $SUDO nginx -t && $SUDO systemctl reload nginx
+            ln -sf /etc/nginx/sites-available/cykle /etc/nginx/sites-enabled/cykle
+            rm -f /etc/nginx/sites-enabled/default
+            nginx -t && systemctl reload nginx
 
             # ── App directory ─────────────────────────────────────────────────
             APP=${{ secrets.HOSTINGER_APP_PATH }}
-            $SUDO mkdir -p "$APP"
-            $SUDO chown -R $(whoami):$(whoami) "$APP"
+            mkdir -p "$APP"
 
             if [ -d "$APP/.git" ]; then
               echo "==> Pulling latest code..."
