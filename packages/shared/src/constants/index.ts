@@ -3,8 +3,10 @@ export const PLATFORM_COMMISSION_RATE = 0.15; // 15% default platform fee
 export const MIN_ORDER_WEIGHT_KG = 1;
 export const MAX_ORDER_WEIGHT_KG = 50;
 
-export const CURRENCY = 'AED';
-export const CURRENCY_SYMBOL = 'AED';
+export const CURRENCY = 'PHP';
+export const CURRENCY_SYMBOL = '₱';
+export const LOCALE = 'en-PH';
+export const TIMEZONE = 'Asia/Manila';
 
 // Geolocation — max distance in km for marketplace discovery
 export const MAX_VENDOR_SEARCH_RADIUS_KM = 20;

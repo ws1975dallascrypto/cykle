@@ -19,13 +19,14 @@ export async function discoverVendors(req: Request, res: Response, next: NextFun
       },
     });
 
-    const enriched = vendors
+    type EnrichedVendor = (typeof vendors)[number] & { distance: number };
+    const enriched: EnrichedVendor[] = vendors
       .map((v) => ({
         ...v,
         distance: haversineDistance(lat, lng, Number(v.latitude), Number(v.longitude)),
       }))
       .filter((v) => v.distance <= radius)
-      .sort((a, b) => {
+      .sort((a: EnrichedVendor, b: EnrichedVendor) => {
         if (sortBy === 'rating') return Number(b.rating) - Number(a.rating);
         return a.distance - b.distance;
       });

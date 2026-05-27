@@ -126,7 +126,7 @@ export async function getOrder(req: Request, res: Response, next: NextFunction):
         orderItems: true,
         orderLegs: { include: { driverProfile: { include: { user: { select: { firstName: true, lastName: true, phone: true } } } } } },
         statusHistory: { orderBy: { createdAt: 'desc' } },
-        vendorProfile: { select: { shopName: true, logo: true, phone: true, latitude: true, longitude: true } },
+        vendorProfile: { select: { shopName: true, logo: true, latitude: true, longitude: true } },
       },
     });
     if (!order) throw new AppError(404, 'Order not found', 'ORDER_NOT_FOUND');
@@ -139,7 +139,7 @@ export async function getOrder(req: Request, res: Response, next: NextFunction):
     const isOwner =
       (customerProfile && order.customerProfileId === customerProfile.id) ||
       (vendorProfile && order.vendorProfileId === vendorProfile.id) ||
-      (driverProfile && order.orderLegs.some((l) => l.driverProfileId === driverProfile.id)) ||
+      (driverProfile && order.orderLegs.some((l: { driverProfileId: string | null }) => l.driverProfileId === driverProfile.id)) ||
       req.user!.role === 'SUPER_ADMIN';
 
     if (!isOwner) throw new AppError(403, 'Access denied', 'FORBIDDEN');
@@ -180,7 +180,7 @@ export async function cancelOrder(req: Request, res: Response, next: NextFunctio
     const order = await prisma.order.findUnique({ where: { id: req.params.id } });
     if (!order) throw new AppError(404, 'Order not found', 'ORDER_NOT_FOUND');
 
-    const cancellableStatuses: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.PICKUP_ASSIGNED];
+    const cancellableStatuses: string[] = [OrderStatus.PENDING, OrderStatus.PICKUP_ASSIGNED];
     if (!cancellableStatuses.includes(order.status)) {
       throw new AppError(400, 'Order cannot be cancelled at this stage', 'INVALID_STATUS_TRANSITION');
     }
