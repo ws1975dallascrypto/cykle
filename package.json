@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "build": "turbo build",
+    "build": "npm run build --workspace=@cykle/api && NEXT_PUBLIC_API_URL=http://mediumorchid-otter-765041.hostingersite.com npm run build --workspace=@cykle/web",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
