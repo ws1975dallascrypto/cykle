@@ -6,6 +6,7 @@ on:
 
 env:
   NODE_VERSION: '20'
+  PNPM_VERSION: '9.0.0'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -19,11 +20,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Install pnpm
+        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
+
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Type-check all packages
-        run: npm run type-check
+        run: pnpm type-check
 
       - name: Lint
-        run: npm run lint
+        run: pnpm lint
