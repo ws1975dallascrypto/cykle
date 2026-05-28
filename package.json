@@ -9,6 +9,7 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "start": "node server.js",
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
