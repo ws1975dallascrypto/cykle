@@ -4,11 +4,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  NODE_VERSION: '20'
-  PNPM_VERSION: '9.0.0'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   lint-and-typecheck:
     name: Lint & Type-check
@@ -18,10 +13,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
+
+      - name: Verify environment
+        run: node --version && npm --version
 
       - name: Install pnpm
-        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
+        run: npm install -g pnpm@9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
