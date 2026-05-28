@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
 RUN apk add --no-cache libc6-compat openssl
-RUN npm install -g pnpm@9.0.0
+RUN npm install -g pnpm@9.15.9 tsx
 
 WORKDIR /app
 
@@ -23,7 +23,6 @@ COPY apps/api/tsconfig*.json ./apps/api/
 
 EXPOSE 4000
 
-# On start: sync DB schema → seed demo data (ignore errors if already seeded) → start dev server
+# Start: push DB schema then run API with tsx (no TS compilation needed)
 CMD sh -c "pnpm --filter @cykle/api exec prisma db push --accept-data-loss && \
-           (pnpm --filter @cykle/api db:seed || true) && \
-           pnpm --filter @cykle/api dev"
+           pnpm --filter @cykle/api exec tsx src/index.ts"
